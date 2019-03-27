@@ -27,12 +27,6 @@ process.env.NODE_ENV = 'development';
 // uncomment below line to test this code against staging environment
 // process.env.NODE_ENV = 'staging';
 
-
-// config variables
-const config = require('./config/config.js');
-
-
-
 const server = http.createServer(app);
 const io = socketIo(server);
 let base = `http://localhost:37221`;
@@ -67,9 +61,10 @@ server.listen(port, () => {
             "InnerMsg" : response.data
         }
         AllBlockInfo = JSON.stringify(successObj);
-        //console.log(AllBlockInfo);
         fs.writeFile('YourArrayFile', AllBlockInfo,(err, data) =>{
-          if (err) {console.log("eeeeee "+err);}
+          if (err) {
+           return err;
+          }
           else{
             console.log("Successfully Written to File.");
           }
@@ -82,7 +77,6 @@ server.listen(port, () => {
   app.get('/getAllBlock', (req, res) => {
     fs.readFile('YourArrayFile', 'utf8', function (err,data) {
       if (err) {
-        console.log("GetAllBlock");
         return err;
       }
       else
@@ -109,7 +103,6 @@ app.get('/RestBlock', (req,res ) =>{
       let newData =response.data;
       fs.readFile('YourArrayFile', 'utf8', (err,OldData) => {
         if (err) {
-          console.log("RestBlock Before");
           return err;
         }
         else
@@ -126,8 +119,7 @@ app.get('/RestBlock', (req,res ) =>{
          let appendData = JSON.stringify(obj);
           fs.writeFile('YourArrayFile', appendData , function(err) {
             if(err) {
-              console.log("RestBlock After");
-              return;
+              return err;
              } 
              else{
               console.log("Successfully Added to File.");
@@ -138,7 +130,7 @@ app.get('/RestBlock', (req,res ) =>{
       res.status(response.status).json(successObj);
     })
     .catch(error => {
-      console.log(error);
+     // console.log(error);
       let errObj = {
         "statusCode" : response.status,
         "statusText" : response.statusText,
