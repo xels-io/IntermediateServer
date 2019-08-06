@@ -3,4 +3,7 @@
 
 # dependencies
 /node_modules
+/.vs
+/.idea
+/package-lock.json
 
