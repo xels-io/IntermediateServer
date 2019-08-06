@@ -6,4 +6,7 @@
 /.vs
 /.idea
 /package-lock.json
+/ssl_certificate/*
+!/ssl_certificate/readme.txt
 
+/YourArrayFile
