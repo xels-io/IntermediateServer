@@ -8,6 +8,11 @@ const fs = require('fs');
 const http = require('http');
 const https = require('https');
 
+//mongoDB connection
+const mongoose = require('mongoose');
+
+mongoose.connect('mongodb://localhost:27017/blockchain_db',{ useNewUrlParser: true });
+mongoose.Promise = global.Promise;
 
 const express = require("express"),
     cors = require("cors"),
@@ -60,8 +65,60 @@ app.use(function(req, res, next) {
  *
  *
  */
+
+const Block = require('./models/block');
+function updateDB(){
+
+    Block.find().sort({height:-1}).limit(1).exec((err,docs)=>{
+        if(err){
+            console.log(err);
+        }else{
+            let height=0;
+
+            if(docs.length>0){
+                height = docs[0].height;
+            }
+
+            let Url = xelsAPI + '/api/BlockExplorer/RestblockAppend';
+            let query = { 'height': height };
+
+            console.log("DB Updating...")
+            axios.get(Url, { params: query }).then(response => {
+                if(response.data.length>0){
+                    Block.insertMany(response.data,function(err,docs){
+                        if(err){
+                            console.log(err)
+                        }else{
+
+                            console.log('Database updated('+response.data.length+' records) from height='+(height+1))
+                        }
+
+                    })
+                }else{
+                    console.log('No new block found! Last block height='+height)
+                }
+
+
+            }).catch(err => console.log("restblock err else"));
+        }
+    })
+
+
+}
 server.listen(configProperties.httpPort, () => {
     console.log(`Listening on port ${configProperties.httpPort}`);
+    updateDB();
+    setInterval(function () {
+        Block.find().sort({heights:-1}).limit(1).exec((err,docs)=>{
+            if(docs.length>0){
+                updateDB(docs[0].height);
+                //console.log(docs[0].height);
+            }else{
+                updateDB();
+            }
+        })
+    },5*60*1000);
+
     fs.exists('YourArrayFile', function(exists) {
         if (exists) {
             ReadFileToSearch().then(result => {
@@ -163,23 +220,81 @@ app.get('/getAllBlock', (req, res) => {
  *
  *
  */
-app.get('/getAllBlocksParams/page=:page/perPage=:perPage', (req, res) => {
+ app.get('/getAllBlocksParams/page=:page/perPage=:perPage', (req, res) => {
     let pageSize = req.params.perPage;
     let page = req.params.page;
-    ReadFileToSearch().then(response => {
-        if (response.InnerMsg.length > 0) {
-            let transactionsInfo = response.InnerMsg.map(a => a.transactions);
-            let transactionArray = Array.prototype.concat.apply([], transactionsInfo);
-            app.locals.transactionDetails = transactionArray;
-            let blocks = response.InnerMsg.slice(pageSize * (page - 1), pageSize * page);
-            let data = {
-                "totalLength": response.InnerMsg.length,
-                "blocksArray": blocks,
-                "transactionLength": transactionArray.length
-            }
-            res.json(data);
+    let offset = (page*pageSize)-pageSize;
+    Block.find().skip(offset).limit(parseInt(pageSize)).sort({height:-1}).exec((err,docs)=>{
+        if(err){
+            console.log('Query Error:',err);
+        }else{
+            Block.countDocuments().exec((err,count)=>{
+                let data = {
+                    "totalLength": count,
+                    "blocksArray": docs
+                }
+                res.json(data);
+            })
+
+
         }
-    });
+    })
+});
+
+app.get('/getTransactions/page=:page/perPage=:perPage', (req, res) => {
+    let pageSize = req.params.perPage;
+    if(pageSize>0){
+        pageSize = parseInt(pageSize)
+    }else{
+        pageSize = 10;
+    }
+    let page = req.params.page;
+    if(page>0){
+        page = parseInt(page)
+    }else{
+        page = 1;
+    }
+    let offset = (page*pageSize)-pageSize;
+    console.log(offset);
+
+    Block.aggregate([
+        { $unwind :'$transactions'},
+        { $project : {
+            txId : '$transactions.txId',
+            time : '$transactions.time',
+                totalOut : '$transactions.totalOut',
+                lockTime : '$transactions.lockTime',
+                inputs : '$transactions.inputs',
+                outputs : '$transactions.outputs',
+                vIn : '$transactions.vIn',
+                vOut : '$transactions.vOut'
+        } },
+        { $skip :offset},
+        { $limit :pageSize}
+
+    ]).sort({height:-1}).exec((err,transactions)=>{
+        if(err){
+            console.log(err);
+        }else{
+            Block.aggregate([
+                { $unwind :'$transactions'},
+                { $count : 'transactions'}
+
+            ]).exec((err,total)=>{
+
+                if(err){
+                    console.log(err)
+                }else{
+                    let total_tx= total[0].transactions;
+                    let data = {
+                        transactions,
+                        "transactionLength": total_tx
+                    }
+                    res.json(data);
+                }
+            })
+        }
+    })
 });
 /**  get block information per page ends
  *
@@ -220,29 +335,25 @@ app.get('/', (req, res) => {
  *
  */
 app.get('/getSearchVal', (req, res) => {
-
-    ReadFileToSearch().then(dataRes => {
-
-        let p = SearchElement(dataRes.InnerMsg, req.query.value, req.query.types)
-            .then(result => {
-                if (result.length > 0) {
-                    let successObj = {
-                            "statusCode": 200,
-                            "statusText": 'Ok',
-                            "InnerMsg": result
-                        }
-                        //console.log(successObj);
-                    res.status(200).json(successObj);
-                } else {
-                    let notFounObj = {
-                        "statusCode": '',
-                        "statusText": 'Ok',
-                        "InnerMsg": "No Matches Found"
-                    }
-                    res.status(200).json(notFounObj);
+    SearchElement(req.query.value, req.query.types)
+        .then(result => {
+            if (result.length > 0) {
+                let successObj = {
+                    "statusCode": 200,
+                    "statusText": 'Ok',
+                    "InnerMsg": result
                 }
-            }).catch(err => console.log(err));
-    });
+                //console.log(successObj);
+                res.status(200).json(successObj);
+            } else {
+                let notFounObj = {
+                    "statusCode": '',
+                    "statusText": 'Ok',
+                    "InnerMsg": "No Matches Found"
+                }
+                res.status(200).json(notFounObj);
+            }
+        }).catch(err => console.log(err));
 });
 /**  search block information routing ends
  *
@@ -279,20 +390,20 @@ function ReadFileToSearch() {
  *
  *
  */
-function SearchElement(arr, value, type) {
-    let blockData = common.getMappedData(arr);
+function SearchElement(value, type) {
+
     if (type === 'Blocks') {
         return new Promise((resolve, reject) => {
-            let arrayFind = [];
-            blockData.filter((item) => {
-                for (var key in item) {
-                    // tslint:disable-next-line:max-line-length
-                    if (item[key].toString().includes(value)) {
-                        arrayFind.push(item);
-                    }
+            let orConditions = [{blockId:value}];
+            orConditions.push({height:value});
+            Block.find({$or:orConditions}).exec((err,docs)=>{
+                if(err){
+                    console.log('Query Error:',err)
+                }else{
+                    resolve(docs);
                 }
-                resolve(arrayFind);
-            });
+
+            })
         });
     } else if (type === 'Transactions') {
         let mappedTransaction = common.getMappedTransactionData(app.locals.transactionDetails);
@@ -552,8 +663,6 @@ app.get('/GetAPIResponse', (req, res) => {
 app.post('/PostAPIResponse', (req, res) => {
 
     console.log("req.query");
-    console.log(req.query);
-    console.log(req.body);
     let URL = '';
     if (common.isEmpty(req.query)) {
         req.query = req.body;
