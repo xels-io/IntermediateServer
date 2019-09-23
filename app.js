@@ -11,7 +11,7 @@ const https = require('https');
 //mongoDB connection
 const mongoose = require('mongoose');
 
-mongoose.connect('mongodb://localhost:27017/blockchain_db',{ useNewUrlParser: true });
+mongoose.connect('mongodb://localhost:27017/blockchain_db',{ useNewUrlParser: true,useUnifiedTopology: true });
 mongoose.Promise = global.Promise;
 
 const express = require("express"),
@@ -118,57 +118,6 @@ server.listen(configProperties.httpPort, () => {
             }
         })
     },5*60*1000);
-
-    fs.exists('YourArrayFile', function(exists) {
-        if (exists) {
-            ReadFileToSearch().then(result => {
-                if (result.InnerMsg.length > 0) {
-                    let Url = xelsAPI + '/api/BlockExplorer/RestblockAppend';
-                    let query = { 'height': result.InnerMsg[0].height };
-                    axios.get(Url, { params: query }).then(response => {
-
-                        let successObj = {
-                            "statusCode": response.status,
-                            "statusText": response.statusText,
-                            "InnerMsg": response.data
-                        }
-
-                        let newData = response.data;
-                        if (newData.length > 0) {
-                            const addedResult = newData.concat(result.InnerMsg);
-                            let addIntoFile = filerewrite(addedResult).then(res => {
-                                console.log("added into file");
-                            });
-                        }
-
-                    }).catch(err => console.log("restblock err if"));
-                }
-            });
-
-        } else {
-            let Url = xelsAPI + '/api/BlockExplorer/RestblockAppend';
-            let query = { 'height': 0 };
-            //console.log("hello not exist")
-            axios.get(Url, { params: query }).then(response => {
-
-                let successObj = {
-                    "statusCode": response.status,
-                    "statusText": response.statusText,
-                    "InnerMsg": response.data
-                }
-                AllBlockInfo = JSON.stringify(successObj);
-                fs.writeFile('YourArrayFile', AllBlockInfo, (err, data) => {
-                    if (err) {
-                        console.log("error " + err);
-                    } else {
-                        console.log("Successfully Written to File.");
-                    }
-                });
-
-            }).catch(err => console.log("restblock err else"));
-
-        }
-    });
     // 
 });
 
