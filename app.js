@@ -204,36 +204,46 @@ app.get('/getTransactions/page=:page/perPage=:perPage', (req, res) => {
         page = 1;
     }
     let offset = (page*pageSize)-pageSize;
-    console.log(offset);
+    let searchValue = req.query['search'];
 
-    Block.aggregate([
-        { $unwind :'$transactions'},
-        { $project : {
+    let aggregate = [{ $unwind :'$transactions'}];
+    let aggregateForCount = [{ $unwind :'$transactions'}];
+    if(searchValue){
+        let orConditions = [
+            {'transactions.txId':{ $regex: searchValue }},
+            {'transactions.inputs':{ $regex: searchValue }},
+            {'transactions.outputs':{ $regex: searchValue }}
+        ];
+        aggregate.push({ $match:{$or:orConditions}})
+        aggregateForCount.push({ $match:{$or:orConditions}})
+    }
+    aggregate.push({ $project : {
             txId : '$transactions.txId',
             time : '$transactions.time',
-                totalOut : '$transactions.totalOut',
-                lockTime : '$transactions.lockTime',
-                inputs : '$transactions.inputs',
-                outputs : '$transactions.outputs',
-                vIn : '$transactions.vIn',
-                vOut : '$transactions.vOut'
-        } },
-        { $skip :offset},
-        { $limit :pageSize}
+            totalOut : '$transactions.totalOut',
+            lockTime : '$transactions.lockTime',
+            inputs : '$transactions.inputs',
+            outputs : '$transactions.outputs',
+            vIn : '$transactions.vIn',
+            vOut : '$transactions.vOut'
+        } })
+    aggregate.push({ $skip :offset});
+    aggregate.push({ $limit :pageSize});
 
-    ]).sort({height:-1}).exec((err,transactions)=>{
+    Block.aggregate(aggregate).sort({height:-1}).exec((err,transactions)=>{
+
         if(err){
             console.log(err);
         }else{
-            Block.aggregate([
-                { $unwind :'$transactions'},
-                { $count : 'transactions'}
-
-            ]).exec((err,total)=>{
+            aggregateForCount.push({ $count : 'transactions'});
+            Block.aggregate(aggregateForCount).exec((err,total)=>{
 
                 if(err){
                     console.log(err)
                 }else{
+                    if(!total[0]){
+                        total[0] = {transactions:0};
+                    }
                     let total_tx= total[0].transactions;
                     let data = {
                         transactions,
@@ -344,7 +354,9 @@ function SearchElement(value, type) {
     if (type === 'Blocks') {
         return new Promise((resolve, reject) => {
             let orConditions = [{blockId:value}];
-            orConditions.push({height:value});
+            if(Number(value)){
+                orConditions.push({height:Number(value)});
+            }
             Block.find({$or:orConditions}).exec((err,docs)=>{
                 if(err){
                     console.log('Query Error:',err)
@@ -355,19 +367,35 @@ function SearchElement(value, type) {
             })
         });
     } else if (type === 'Transactions') {
-        let mappedTransaction = common.getMappedTransactionData(app.locals.transactionDetails);
-        return new Promise((resolve, reject) => {
-            let arrayFind = [];
-            mappedTransaction.filter((transactionItem) => {
-                for (var key in transactionItem) {
-                    // tslint:disable-next-line:max-line-length
-                    if (transactionItem.hasOwnProperty(key) && transactionItem[key].toString().includes(value)) {
-                        arrayFind.push(transactionItem);
-                    }
+        let orConditions = [
+                {'transactions.txId':{ $regex: value }},
+                {'transactions.inputs':{ $regex: value }},
+                {'transactions.outputs':{ $regex: value }}
+            ];
+        return new Promise((resolve,reject)=>{
+            let ag = [
+                { $unwind :'$transactions'},
+                { $match:{$or:orConditions}},
+                { $project : {
+                        txId : '$transactions.txId',
+                        time : '$transactions.time',
+                        totalOut : '$transactions.totalOut',
+                        lockTime : '$transactions.lockTime',
+                        inputs : '$transactions.inputs',
+                        outputs : '$transactions.outputs',
+                        vIn : '$transactions.vIn',
+                        vOut : '$transactions.vOut'
+                    } }
+            ];
+            Block.aggregate(ag).exec((err,transactions)=>{
+                if(err){
+                    console.log(err);
+                }else{
+                    let txdata = common.getMappedTransactionData(transactions)
+                    resolve(txdata);
                 }
-                resolve(arrayFind);
-            });
-        });
+            })
+        })
     } else if (type === 'RichAddress') {
         let searchAddress = app.locals.richListdetail;
         return new Promise((resolve, reject) => {
