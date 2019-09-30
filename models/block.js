@@ -12,7 +12,7 @@ const blockSchema = new Schema({
    "blockData":{type:String},
    "blockId":{type:String},
    "blockHeader":{type:String},
-   "height":{type:Number},
+   "height":{type:Number,unique:true},
    "confirmations":{type:Number},
    "medianTimePast":{type:Number},
    "blockTime":{type:Number}

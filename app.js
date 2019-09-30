@@ -229,7 +229,6 @@ app.get('/getTransactions/page=:page/perPage=:perPage', (req, res) => {
         } })
     aggregate.push({ $skip :offset});
     aggregate.push({ $limit :pageSize});
-
     Block.aggregate(aggregate).sort({height:-1}).exec((err,transactions)=>{
 
         if(err){
@@ -536,37 +535,27 @@ function filerewrite(result) {
  */
 app.get('/RestBlock', (req, res) => {
     let Url = xelsAPI + req.query.URL;
-    axios.get(Url, { params: req.query })
-        .then(response => {
-            let successObj = {
-                "statusCode": response.status,
-                "statusText": response.statusText,
-                "InnerMsg": response.data
-            }
-            let newData = response.data;
-
-            if (newData.length) {
-                ReadFileToSearch().then(res => {
-                    const result = newData.concat(res.InnerMsg);
-                    let rewriteData = filerewrite(result).then(res => {
-                        console.log("RestBlock Called");
-                    });;
-                });
-                res.status(response.status).json(successObj);
-            } else {
-                res.status(response.status).json(successObj);
-            }
-        })
-        .catch(error => {
+    let height = req.query['height'];
+    Block.find({height:{$gt:height}}).limit(100).sort({height:-1}).exec((err,docs)=>{
+        if(err){
             console.log("Rest Block error");
             console.log(error);
             let errObj = {
-                "statusCode": error.response.status,
-                "statusText": error.response.statusText,
-                "InnerMsg": error.response.data.errors ? error.response.data.errors : ""
+                "statusCode": 500,
+                "statusText": 'ERROR',
+                "InnerMsg": 'Rest Block ERROR'
             }
-            res.status(error.response.status).json(errObj);
-        });
+            res.status(500).json(errObj);
+        }else{
+            let successObj = {
+                "statusCode": 200,
+                "statusText": 'OK',
+                "InnerMsg": docs
+            }
+            res.status(200).json(successObj);
+        }
+
+    })
 
 });
 /** get newly generated block information routing ends
