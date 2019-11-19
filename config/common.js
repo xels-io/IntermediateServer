@@ -125,7 +125,6 @@ function isEmpty(obj) {
  *
  */
  function getMappedTransactionData(transactionArray) {
-   
   this.mapData = transactionArray.map((tmp) => {
     return {
       transactionId: tmp.txId,

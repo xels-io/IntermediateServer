@@ -1,10 +1,8 @@
-//file access 
 var common = require('./config/common');
 const configProperties = require('./config/config');
 
 
 // node modules access
-const fs = require('fs');
 const http = require('http');
 const https = require('https');
 
@@ -42,9 +40,6 @@ const httpsServer = https.createServer(configProperties.httpsOptions, app);
 //const io = socketIo(httpsServer);
 const io = socketIo(server);
 
-let AllBlockInfo = [];
-// a middleware function with no mount path. This code is executed for every request to the router
-
 app.use(function(req, res, next) {
 
     // if(req.protocol === 'http')
@@ -67,6 +62,7 @@ app.use(function(req, res, next) {
  */
 
 const Block = require('./models/block');
+
 function updateDB(){
 
     Block.find().sort({height:-1}).limit(1).exec((err,docs)=>{
@@ -153,13 +149,7 @@ io.on("connection", socket => {
  *
  */
 app.get('/getAllBlock', (req, res) => {
-    fs.readFile('YourArrayFile', 'utf8', function(err, data) {
-        if (err) {
-            return err;
-        } else {
-            res.send(data);
-        }
-    });
+    return res.redirect('/getAllBlocksParams/page=1/perPage=10')
 });
 /**  get all block information ends
  *
@@ -318,30 +308,26 @@ app.get('/getSearchVal', (req, res) => {
  *
  */
 
-/**  method of file read starts
+/**  method of read all blocks start
  *
  */
-function ReadFileToSearch() {
+function ReadAllData() {
     return new Promise((resolve, reject) => {
-    
-        fs.readFile('YourArrayFile', 'utf8', (err, data) => {
-            if (err) {
-                reject(err);
-            } else {
-                console.log("reading file");
-                let parsedData;
-                try {
-                    parsedData = JSON.parse(data);
-                } catch (e) {
-                    parsedData = JSON.parse(JSON.stringify(data));
-                }
-                //let parsedData = JSON.parse(JSON.stringify(data));
-                resolve(parsedData);
+
+        Block.find().sort({height:-1}).exec((err,docs)=>{
+            if(err){
+                console.log('Query Error:',err);
+                reject(err)
+            }else{
+                resolve(docs)
+
+
             }
-        });
+        })
+
     }).catch(err => console.log(err));
 }
-/**  method of file read ends
+/**  method of read all blocks ends
  *
  */
 /**  method of searching elements starts
@@ -421,12 +407,11 @@ function SearchElement(value, type) {
  */
 function showAddressList(y) {
     return new Promise((resolve, reject) => {
-        let data = ReadFileToSearch().then(result => {
+        ReadAllData().then(result => {
             let filteredAddress = transactionMapping(result);
             let groupedAddress = groupAddress(filteredAddress);
             let sortedAddress = sortAddress(groupedAddress);
             app.locals.richListdetail = sortedAddress;
-            console.log(sortedAddress);
             let successObj = {
                 "statusCode": 200,
                 "statusText": "Ok",
@@ -442,7 +427,7 @@ function showAddressList(y) {
  *
  */
 function transactionMapping(result) {
-    let transactionData = result.InnerMsg.map(a => a.transactions);
+    let transactionData = result.map(a => a.transactions);
     let transactionArray = [].concat.apply([], transactionData);
     let filteredTransaction = addressMapping(transactionArray);
     return filteredTransaction;
@@ -496,66 +481,42 @@ function sortAddress(mapAddress) {
  *
  *
  */
-/**  method of adding new blocks in existing file starts
- *
- *
- */
 
-
-
-function filerewrite(result) {
-    return new Promise((resolve, reject) => {
-        const unique = [];
-        result.map(x => unique.filter(a => a.height === x.height).length > 0 ? null : unique.push(x));
-        let obj = {
-            "statusCode": 200,
-            "statusText": result.statusText,
-            "InnerMsg": unique
-        }
-        let appendData = JSON.stringify(obj);
-        fs.writeFile('YourArrayFile', appendData, 'utf8', (err, rows) => {
-            //console.log(rows);
-            if (err) {
-                console.log("Rewrite error");
-                reject(err);
-            }
-            console.log("Successfully saved to File.");
-            resolve(rows);
-
-        });
-    });
-}
-/**  method of adding new blocks in existing file ends
- *
- *
- */
 /** get newly generated block information routing starts
  *
  *
  */
 app.get('/RestBlock', (req, res) => {
-    let Url = xelsAPI + req.query.URL;
     let height = req.query['height'];
-    Block.find({height:{$gt:height}}).limit(100).sort({height:-1}).exec((err,docs)=>{
-        if(err){
-            console.log("Rest Block error");
-            console.log(error);
-            let errObj = {
-                "statusCode": 500,
-                "statusText": 'ERROR',
-                "InnerMsg": 'Rest Block ERROR'
+    if(height){
+        Block.find({height:{$gt:height}}).limit(100).sort({height:-1}).exec((err,docs)=>{
+            if(err){
+                console.log("Rest Block error");
+                let errObj = {
+                    "statusCode": 500,
+                    "statusText": 'ERROR',
+                    "InnerMsg": 'Rest Block ERROR'
+                }
+                res.status(500).json(errObj);
+            }else{
+                let successObj = {
+                    "statusCode": 200,
+                    "statusText": 'OK',
+                    "InnerMsg": docs
+                }
+                res.status(200).json(successObj);
             }
-            res.status(500).json(errObj);
-        }else{
-            let successObj = {
-                "statusCode": 200,
-                "statusText": 'OK',
-                "InnerMsg": docs
-            }
-            res.status(200).json(successObj);
-        }
 
-    })
+        })
+    }else{
+        let errObj = {
+            "statusCode": 400,
+            "statusText": 'ERROR',
+            "InnerMsg": 'Minimum height should be provided'
+        }
+        res.status(500).json(errObj);
+    }
+
 
 });
 /** get newly generated block information routing ends
