@@ -95,7 +95,7 @@ function updateDB(){
                 }
 
 
-            }).catch(err => console.log("restblock err else"));
+            }).catch(err => console.log("restblock err else",err));
         }
     })
 
