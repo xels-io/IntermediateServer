@@ -23,7 +23,21 @@ const socketIo = require("socket.io");
 
 const app = express();
 let xelsAPI = configProperties.xelsApi;
-app.use(cors());
+
+var whitelist = ['https://blockexplorer.xels.io'];
+var corsOptions = {
+    origin: function (origin, callback) {
+        if (whitelist.indexOf(origin) !== -1 || !origin) {
+            callback(null, true)
+        } else {
+            callback(new Error('Not allowed by cors policy'))
+        }
+    }
+}
+
+
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
