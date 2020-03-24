@@ -111,8 +111,8 @@ function updateDB(){
 
 
 }
-httpsServer.listen(configProperties.httpPort, () => {
-    console.log(`Listening on port ${configProperties.httpPort}`);
+httpsServer.listen(configProperties.httpsPort, () => {
+    console.log(`Listening on port ${configProperties.httpsPort}`);
     updateDB();
     setInterval(function () {
         Block.find().sort({heights:-1}).limit(1).exec((err,docs)=>{
