@@ -24,7 +24,7 @@ const socketIo = require("socket.io");
 const app = express();
 let xelsAPI = configProperties.xelsApi;
 
-var whitelist = ['https://blockexplorer.xels.io'];
+var whitelist = ['https://blockexplorer.xels.io','http://localhost:4200'];
 var corsOptions = {
     origin: function (origin, callback) {
         if (whitelist.indexOf(origin) !== -1 || !origin) {
@@ -222,6 +222,7 @@ app.get('/getTransactions/page=:page/perPage=:perPage', (req, res) => {
         aggregateForCount.push({ $match:{$or:orConditions}})
     }
     aggregate.push({ $project : {
+            height : '$height',
             txId : '$transactions.txId',
             time : '$transactions.time',
             totalOut : '$transactions.totalOut',
@@ -231,9 +232,10 @@ app.get('/getTransactions/page=:page/perPage=:perPage', (req, res) => {
             vIn : '$transactions.vIn',
             vOut : '$transactions.vOut'
         } })
+    aggregate.push({ $sort : { height : -1 } });
     aggregate.push({ $skip :offset});
     aggregate.push({ $limit :pageSize});
-    Block.aggregate(aggregate).sort({height:-1}).exec((err,transactions)=>{
+    Block.aggregate(aggregate).exec((err,transactions)=>{
 
         if(err){
             console.log(err);
