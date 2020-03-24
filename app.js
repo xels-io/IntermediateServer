@@ -48,26 +48,22 @@ app.locals.transactionDetails;
 process.env.NODE_ENV = 'development';
 
 //create httpsServer
-const server = http.createServer(app);
+//const server = http.createServer(app);
 const httpsServer = https.createServer(configProperties.httpsOptions, app);
 
 //const io = socketIo(httpsServer);
-const io = socketIo(server);
+const io = socketIo(httpsServer);
 
 app.use(function(req, res, next) {
 
-    // if(req.protocol === 'http')
-    // {
-    //   res.redirect(301, `https://${req.headers.host}${req.url}`);
-    // }
-
-    // else
-    // {
+    if(req.protocol === 'http')
+    {
+      res.redirect(301, `https://${req.headers.host}${req.url}`);
+    }
     res.header("Access-Control-Allow-Origin", "*");
     res.header('Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS');
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, X-Assassin-RequestHash");
     next();
-    // }
 
 });
 /**  server is listening to port and call all blocks information starts
@@ -115,7 +111,7 @@ function updateDB(){
 
 
 }
-server.listen(configProperties.httpPort, () => {
+httpsServer.listen(configProperties.httpPort, () => {
     console.log(`Listening on port ${configProperties.httpPort}`);
     updateDB();
     setInterval(function () {
