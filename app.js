@@ -85,8 +85,8 @@ function updateDB(){
                 height = docs[0].height;
             }
 
-            let Url = xelsAPI + '/api/BlockExplorer/RestblockAppend';
-            let query = { 'height': height };
+            let Url = xelsAPI + '/api/BlockStore/getallblocksfromheight';
+            let query = { 'height': height,showTransactionDetails:true };
 
             console.log("DB Updating...")
             axios.get(Url, { params: query }).then(response => {
@@ -210,23 +210,22 @@ app.get('/getTransactions/page=:page/perPage=:perPage', (req, res) => {
     let aggregateForCount = [{ $unwind :'$transactions'}];
     if(searchValue){
         let orConditions = [
-            {'transactions.txId':{ $regex: searchValue }},
-            {'transactions.inputs':{ $regex: searchValue }},
-            {'transactions.outputs':{ $regex: searchValue }}
+            {'transactions.txid':{ $regex: searchValue }},
+            // {'transactions.inputs':{ $regex: searchValue }},
+            // {'transactions.outputs':{ $regex: searchValue }}
         ];
         aggregate.push({ $match:{$or:orConditions}})
         aggregateForCount.push({ $match:{$or:orConditions}})
     }
     aggregate.push({ $project : {
             height : '$height',
-            txId : '$transactions.txId',
+            txid : '$transactions.txid',
             time : '$transactions.time',
-            totalOut : '$transactions.totalOut',
             lockTime : '$transactions.lockTime',
-            inputs : '$transactions.inputs',
-            outputs : '$transactions.outputs',
-            vIn : '$transactions.vIn',
-            vOut : '$transactions.vOut'
+            // inputs : '$transactions.inputs',
+            // outputs : '$transactions.outputs',
+            vin : '$transactions.vin',
+            vout : '$transactions.vout'
         } })
     aggregate.push({ $sort : { height : -1 } });
     aggregate.push({ $skip :offset});
@@ -350,7 +349,7 @@ function SearchElement(value, type) {
 
     if (type === 'Blocks') {
         return new Promise((resolve, reject) => {
-            let orConditions = [{blockId:value}];
+            let orConditions = [{hash:value}];
             if(Number(value)){
                 orConditions.push({height:Number(value)});
             }
@@ -358,6 +357,7 @@ function SearchElement(value, type) {
                 if(err){
                     console.log('Query Error:',err)
                 }else{
+                    console.log(docs)
                     resolve(docs);
                 }
 
@@ -365,23 +365,15 @@ function SearchElement(value, type) {
         });
     } else if (type === 'Transactions') {
         let orConditions = [
-                {'transactions.txId':{ $regex: value }},
-                {'transactions.inputs':{ $regex: value }},
-                {'transactions.outputs':{ $regex: value }}
+                {'transactions.txid':{ $regex: value }},
             ];
         return new Promise((resolve,reject)=>{
             let ag = [
                 { $unwind :'$transactions'},
                 { $match:{$or:orConditions}},
                 { $project : {
-                        txId : '$transactions.txId',
+                        txid : '$transactions.txid',
                         time : '$transactions.time',
-                        totalOut : '$transactions.totalOut',
-                        lockTime : '$transactions.lockTime',
-                        inputs : '$transactions.inputs',
-                        outputs : '$transactions.outputs',
-                        vIn : '$transactions.vIn',
-                        vOut : '$transactions.vOut'
                     } }
             ];
             Block.aggregate(ag).exec((err,transactions)=>{
