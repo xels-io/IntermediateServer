@@ -289,6 +289,27 @@ app.get('/address/page=:page/perPage=:perPage', (req, res) => {
 app.get('/', (req, res) => {
     res.redirect('/getAllBlock');
 });
+
+app.get('/getBlockByHeight', (req, res) => {
+    let height = req.query.height
+    Block.find({"height":height}).exec((err,result)=>{
+        if(err){
+            console.log('Query Error:',err)
+            res.status(200).json({
+                "statusCode": '',
+                "statusText": 'Ok',
+                "InnerMsg": "No Matches Found"
+            });
+        }else{
+            res.status(200).json({
+                "statusCode": 200,
+                "statusText": 'Ok',
+                "InnerMsg": result
+            });
+        }
+
+    })
+});
 /**  search block information routing starts
  *
  *
