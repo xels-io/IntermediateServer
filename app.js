@@ -211,8 +211,7 @@ app.get('/getTransactions/page=:page/perPage=:perPage', (req, res) => {
     if(searchValue){
         let orConditions = [
             {'transactions.txid':{ $regex: searchValue }},
-            // {'transactions.inputs':{ $regex: searchValue }},
-            // {'transactions.outputs':{ $regex: searchValue }}
+            {'transactions.vout.scriptPubKey.addresses':searchValue}
         ];
         aggregate.push({ $match:{$or:orConditions}})
         aggregateForCount.push({ $match:{$or:orConditions}})
@@ -370,7 +369,11 @@ function SearchElement(value, type) {
 
     if (type === 'Blocks') {
         return new Promise((resolve, reject) => {
-            let orConditions = [{hash:value}];
+            let orConditions = [
+                {hash:value},
+                {tx:value},
+                {'transactions.vout.scriptPubKey.addresses':value}
+            ];
             if(Number(value)){
                 orConditions.push({height:Number(value)});
             }
@@ -387,6 +390,7 @@ function SearchElement(value, type) {
     } else if (type === 'Transactions') {
         let orConditions = [
                 {'transactions.txid':{ $regex: value }},
+                {'transactions.vout.scriptPubKey.addresses':value}
             ];
         return new Promise((resolve,reject)=>{
             let ag = [
