@@ -41,6 +41,7 @@ const blockSchema = new Schema({
    "nextblockhash":{type:String},
    "signature":{type:String},
    "blockreward":{type:Number},
+   "totalout":{type:Number},
 
    "modifierv2":{type:String},
    "flags":{type:String},
