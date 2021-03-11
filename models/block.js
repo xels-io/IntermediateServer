@@ -26,7 +26,7 @@ const blockSchema = new Schema({
    "confirmations":{type:Number},
    "size":{type:Number},
    "weight":{type:Number},
-   "height":{type:Number},
+   "height":{type:Number,index: { unique: true }},
    "version":{type:Number},
    "versionHex":{type:String},
    "merkleroot":{type:String},

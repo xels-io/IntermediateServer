@@ -173,6 +173,7 @@ app.get('/getAllBlock', (req, res) => {
     let pageSize = req.params.perPage;
     let page = req.params.page;
     let offset = (page*pageSize)-pageSize;
+    console.log(offset);
     Block.find().skip(offset).limit(parseInt(pageSize)).sort({height:-1}).exec((err,docs)=>{
         if(err){
             console.log('Query Error:',err);
@@ -229,7 +230,7 @@ app.get('/getTransactions/page=:page/perPage=:perPage', (req, res) => {
     aggregate.push({ $sort : { height : -1 } });
     aggregate.push({ $skip :offset});
     aggregate.push({ $limit :pageSize});
-    Block.aggregate(aggregate).exec((err,transactions)=>{
+    Block.aggregate(aggregate).allowDiskUse(true).exec((err,transactions)=>{
 
         if(err){
             console.log(err);
