@@ -558,6 +558,7 @@ app.get('/RestBlock', (req, res) => {
  *
  */
 app.get('/GetAPIResponse', (req, res) => {
+	console.log('called',req.query)
     let URL = req.query.URL;
     const parseParams = (params) => {
         if (params.URL)
