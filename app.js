@@ -558,7 +558,6 @@ app.get('/RestBlock', (req, res) => {
  *
  */
 app.get('/GetAPIResponse', (req, res) => {
-	console.log('called',req.query)
     let URL = req.query.URL;
     const parseParams = (params) => {
         if (params.URL)
@@ -606,10 +605,64 @@ app.get('/GetAPIResponse', (req, res) => {
             }
             res.status(error.response.status).json(errObj);
         });
- 
-
-
 });
+
+
+// Get Request received from parachain
+
+app.get('/GetAPIResponse/:port', (req, res) => {
+    let URL = req.query.URL;
+    let {port} = req.params;
+    
+    // Parse Pramas mehtod
+    const parseParams = (params) => {
+        if (params.URL)
+            delete params.URL;
+        const keys = Object.keys(params);
+        let options = '';
+        keys.forEach((key) => {
+            const isParamTypeObject = typeof params[key] === 'object';
+            const isParamTypeArray = isParamTypeObject && (params[key].length >= 0);
+            if (!isParamTypeObject && !isParamTypeArray) {
+                options += `${key}=${params[key]}&`;
+            }
+            if (isParamTypeObject && isParamTypeArray) {
+                let index = 0;
+                params[key].forEach((element, index) => {
+
+                    Object.keys(element).forEach((keyName) => {
+
+                        options += `${key}[${index}].`;
+                        options += `${keyName}=${element[keyName]}&`;
+
+                    });
+                });
+            }
+        });
+        let str = options ? options.slice(0, -1) : options;
+        return encodeURI(str);
+    };// Parse Pramas mehtod end
+
+    let Url = xelsAPI+':'+port+ URL;
+    axios.get(xelsAPI + URL, { params: req.query, paramsSerializer: params => parseParams(params) })
+        .then(response => {
+            let successObj = {
+                "statusCode": response.status,
+                "statusText": response.statusText,
+                "InnerMsg": response.data
+            }
+            res.status(response.status).json(successObj);
+        }).catch(error => {
+            console.log(error);
+            let errObj = {
+                "statusCode": error.response.status,
+                "statusText": error.response.statusText,
+                "InnerMsg": error.response.data.errors ? error.response.data.errors : ""
+            }
+            res.status(error.response.status).json(errObj);
+        });
+});
+
 /** generic Get api response routing ends
  *
  *
@@ -620,7 +673,6 @@ app.get('/GetAPIResponse', (req, res) => {
  */
 app.post('/PostAPIResponse', (req, res) => {
 
-    console.log("req.query");
     let URL = '';
     if (common.isEmpty(req.query)) {
         req.query = req.body;
@@ -629,6 +681,37 @@ app.post('/PostAPIResponse', (req, res) => {
         URL = req.query.URL;
     }
     axios({ method: 'post', url: xelsAPI + URL, data: req.query })
+        .then(response => {
+            let successObj = {
+                "statusCode": response.status,
+                "statusText": response.statusText,
+                "InnerMsg": response.data
+            }
+            res.status(response.status).json(successObj);
+        }).catch(error => {
+            let errObj = {
+                "statusCode": error.response.status,
+                "statusText": error.response.statusText,
+                "InnerMsg": error.response.data.errors ? error.response.data.errors : ""
+            }
+            res.status(error.response.status).json(errObj);
+        });
+   
+
+});
+
+// Post API for para chain
+app.post('/PostAPIResponse/:port', (req, res) => {
+
+    let URL = '';
+    if (common.isEmpty(req.query)) {
+        req.query = req.body;
+        URL = req.query.URL;
+    } else {
+        URL = req.query.URL;
+    }
+    let {port} = req.params;
+    axios({ method: 'post', url: xelsAPI+':'+ port + URL, data: req.query })
         .then(response => {
             let successObj = {
                 "statusCode": response.status,
