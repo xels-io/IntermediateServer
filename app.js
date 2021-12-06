@@ -643,7 +643,7 @@ app.get('/GetAPIResponse/:port', (req, res) => {
         return encodeURI(str);
     };// Parse Pramas mehtod end
 
-    let Url = xelsAPI+':'+port+ URL;
+    let Url = 'http://localhost:'+port+ URL;
     axios.get(xelsAPI + URL, { params: req.query, paramsSerializer: params => parseParams(params) })
         .then(response => {
             let successObj = {
@@ -711,7 +711,7 @@ app.post('/PostAPIResponse/:port', (req, res) => {
         URL = req.query.URL;
     }
     let {port} = req.params;
-    axios({ method: 'post', url: xelsAPI+':'+ port + URL, data: req.query })
+    axios({ method: 'post', url: 'http://localhost:'+ port + URL, data: req.query })
         .then(response => {
             let successObj = {
                 "statusCode": response.status,
