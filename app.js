@@ -680,6 +680,7 @@ app.post('/PostAPIResponse', (req, res) => {
     } else {
         URL = req.query.URL;
     }
+    
     axios({ method: 'post', url: xelsAPI + URL, data: req.query })
         .then(response => {
             let successObj = {
@@ -704,14 +705,15 @@ app.post('/PostAPIResponse', (req, res) => {
 app.post('/PostAPIResponse/:port', (req, res) => {
 
     let URL = '';
+    let {port} = req.params;
     if (common.isEmpty(req.query)) {
         req.query = req.body;
         URL = req.query.URL;
     } else {
         URL = req.query.URL;
     }
-    let {port} = req.params;
-    axios({ method: 'post', url: 'http://localhost:'+ port + URL, data: req.query })
+    let Url = 'http://localhost:'+port+ URL;
+    axios({ method: 'post', url: xelsAPI + URL, data: req.query })
         .then(response => {
             let successObj = {
                 "statusCode": response.status,
@@ -727,8 +729,6 @@ app.post('/PostAPIResponse/:port', (req, res) => {
             }
             res.status(error.response.status).json(errObj);
         });
-   
-
 });
 /** generic Post api response routing ends
  *
